@@ -9,13 +9,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ✅ Resend transporter (instead of Gmail)
+// ✅ Resend SMTP transporter configuration
 const transporter = nodemailer.createTransport({
   host: "smtp.resend.com",
   port: 587,
+  secure: false, // true for 465, false for 587
   auth: {
     user: "resend",
-    pass: process.env.re_18Lzdgd8_N2eF1eZ2gkvxY22jDfHXLYCa, // Use your Resend API key
+    pass: process.env.RESEND_API_KEY, // ✅ Use your Resend API key from environment variable
   },
 });
 
@@ -46,16 +47,17 @@ app.post("/apply", async (req, res) => {
       <p><b>Amount:</b> ${data.amount}</p>
     `;
 
+    // Send email
     await transporter.sendMail({
-      from: '"GovAid Luxe" <noreply@govaid-luxe.app>', // Custom sender
-      to: process.env.MAIL_TO || "sammy1frosh@gmail.com", // Destination email
+      from: '"GovAid Luxe" <sammy1frosh@gmail.com>', // ✅ use your verified email
+      to: process.env.MAIL_TO || "sammy1frosh@gmail.com",
       subject: "New GovAid Luxe Application",
       html: message,
     });
 
-    res.status(200).json({ success: true, message: "Application sent successfully!" });
+    res.status(200).json({ success: true, message: "✅ Application sent successfully!" });
   } catch (error) {
-    console.error("Email send error:", error);
+    console.error("❌ Email send error:", error);
     res.status(500).json({ success: false, message: "Failed to send email" });
   }
 });
