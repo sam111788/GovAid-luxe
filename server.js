@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import nodemailer from "nodemailer";
+import fetch from "node-fetch";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -9,19 +9,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ✅ Choose mail service (Resend or Gmail)
-const transporter = nodemailer.createTransport({
-  host: "smtp.resend.com",
-  port: 587,
-  auth: {
-    user: "resend",
-    pass: process.env.RESEND_API_KEY, // Add in .env
-  },
-});
-
-// Test route
+// Root route
 app.get("/", (req, res) => {
-  res.send("✅ GovAid Luxe Backend is Running Successfully!");
+  res.send("✅ GovAid Luxe Backend Running with Resend API");
 });
 
 // Apply route
@@ -29,7 +19,7 @@ app.post("/apply", async (req, res) => {
   try {
     const data = req.body;
 
-    const message = `
+    const htmlContent = `
       <h2>New Application Received</h2>
       <p><b>Full Name:</b> ${data.fullName}</p>
       <p><b>Email:</b> ${data.email}</p>
@@ -46,19 +36,35 @@ app.post("/apply", async (req, res) => {
       <p><b>Amount:</b> ${data.amount}</p>
     `;
 
-    await transporter.sendMail({
-      from: "GovAid Luxe <onboarding@resend.dev>", // Works even without domain
-      to: process.env.MAIL_TO || "sammy1frosh@gmail.com",
-      subject: "New GovAid Luxe Application",
-      html: message,
+    // ✅ Send email using Resend API
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "GovAid Luxe <noreply@govaid-luxe.app>",
+        to: "sammy1frosh@gmail.com",
+        subject: "New GovAid Luxe Application",
+        html: htmlContent,
+      }),
     });
 
-    res.status(200).json({ success: true, message: "✅ Application sent successfully!" });
+    const result = await response.json();
+    console.log("📨 Resend API response:", result);
+
+    if (response.ok) {
+      res.status(200).json({ success: true, message: "✅ Application sent successfully!" });
+    } else {
+      throw new Error(result.message || "Email send failed");
+    }
+
   } catch (error) {
-    console.error("Email send error:", error);
-    res.status(500).json({ success: false, message: "❌ Failed to send email" });
+    console.error("❌ Email send error:", error);
+    res.status(500).json({ success: false, message: "Failed to send email" });
   }
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
